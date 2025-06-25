@@ -2,12 +2,14 @@ package accrual
 
 import (
 	"encore.app/internal/db"
+	"encore.app/internal/rules"
 	"encore.dev/pubsub"
 )
 
 //encore:service
 type Service struct {
-	db *db.Queries
+	db     *db.Queries
+	engine *rules.Engine
 }
 
 // ChargeEvent represents a charging session that earns points

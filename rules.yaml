@@ -1,0 +1,37 @@
+# Rewards Rules Configuration
+# Default earn rules for different event types
+
+rules:
+  # Points per kWh for charging events
+  charge_kwh:
+    points_per_kwh: 10
+    description: "Points earned per kWh charged"
+    
+  # Points for referral events
+  referral:
+    points: 300
+    description: "Points earned for successful referral"
+    
+  # Points for rating events
+  rating:
+    points: 50
+    description: "Points earned for leaving a rating"
+    
+  # Points for first charge bonus
+  first_charge:
+    points: 100
+    description: "Bonus points for first charge session"
+    
+  # Points for daily login streak
+  daily_login:
+    base_points: 10
+    streak_multiplier: 1.5
+    max_streak_days: 7
+    description: "Points for daily login with streak bonus"
+
+# Rule evaluation settings
+settings:
+  max_points_per_day: 1000
+  max_points_per_event: 500
+  enable_streak_bonus: true
+  enable_first_charge_bonus: true 
