@@ -8,6 +8,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/sqlc-dev/pqtype"
@@ -122,6 +123,43 @@ func (q *Queries) CreateUser(ctx context.Context, phone string) (User, error) {
 	var i User
 	err := row.Scan(&i.ID, &i.Phone, &i.CreatedAt)
 	return i, err
+}
+
+const getPendingRedemptionsOlderThan = `-- name: GetPendingRedemptionsOlderThan :many
+SELECT id, user_id, reward_id, points_spent, status, created_at, updated_at FROM redemptions
+WHERE status = 'PENDING' AND created_at < $1
+ORDER BY created_at ASC
+`
+
+func (q *Queries) GetPendingRedemptionsOlderThan(ctx context.Context, createdAt time.Time) ([]Redemption, error) {
+	rows, err := q.db.QueryContext(ctx, getPendingRedemptionsOlderThan, createdAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Redemption{}
+	for rows.Next() {
+		var i Redemption
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.RewardID,
+			&i.PointsSpent,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getPointsEventsByUser = `-- name: GetPointsEventsByUser :many
@@ -299,6 +337,19 @@ func (q *Queries) GetUserByPhone(ctx context.Context, phone string) (User, error
 	var i User
 	err := row.Scan(&i.ID, &i.Phone, &i.CreatedAt)
 	return i, err
+}
+
+const getUserPointsBalance = `-- name: GetUserPointsBalance :one
+SELECT COALESCE(SUM(points), 0)::bigint as balance
+FROM points_events
+WHERE user_id = $1
+`
+
+func (q *Queries) GetUserPointsBalance(ctx context.Context, userID uuid.UUID) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getUserPointsBalance, userID)
+	var balance int64
+	err := row.Scan(&balance)
+	return balance, err
 }
 
 const updateRedemptionStatus = `-- name: UpdateRedemptionStatus :one

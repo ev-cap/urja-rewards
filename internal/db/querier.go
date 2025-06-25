@@ -6,6 +6,7 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -15,6 +16,7 @@ type Querier interface {
 	CreateRedemption(ctx context.Context, arg CreateRedemptionParams) (Redemption, error)
 	CreateReward(ctx context.Context, arg CreateRewardParams) (RewardsCatalog, error)
 	CreateUser(ctx context.Context, phone string) (User, error)
+	GetPendingRedemptionsOlderThan(ctx context.Context, createdAt time.Time) ([]Redemption, error)
 	GetPointsEventsByUser(ctx context.Context, userID uuid.UUID) ([]PointsEvent, error)
 	GetRedemption(ctx context.Context, id uuid.UUID) (Redemption, error)
 	GetRedemptionsByUser(ctx context.Context, userID uuid.UUID) ([]Redemption, error)
@@ -22,6 +24,7 @@ type Querier interface {
 	GetRewardsCatalog(ctx context.Context) ([]RewardsCatalog, error)
 	GetUser(ctx context.Context, id uuid.UUID) (User, error)
 	GetUserByPhone(ctx context.Context, phone string) (User, error)
+	GetUserPointsBalance(ctx context.Context, userID uuid.UUID) (int64, error)
 	UpdateRedemptionStatus(ctx context.Context, arg UpdateRedemptionStatusParams) (Redemption, error)
 }
 
