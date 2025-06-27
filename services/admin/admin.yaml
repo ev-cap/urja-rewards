@@ -1,0 +1,516 @@
+openapi: 3.0.3
+info:
+  title: Urja Rewards Admin API
+  description: Admin API for managing rewards rules, catalog, and user segments
+  version: 1.0.0
+  contact:
+    name: Urja Rewards Team
+servers:
+  - url: /v1
+    description: Admin API v1
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  
+  schemas:
+    Rule:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "charge_kwh"
+        description:
+          type: string
+          example: "Points earned per kWh charged"
+        config:
+          type: object
+          additionalProperties: true
+        active:
+          type: boolean
+          default: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    
+    Reward:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "$5 Coffee Voucher"
+        description:
+          type: string
+          example: "Redeem for a free coffee at participating locations"
+        cost:
+          type: integer
+          example: 500
+        segment:
+          type: object
+          additionalProperties: true
+          nullable: true
+        active:
+          type: boolean
+          default: true
+        created_by:
+          type: string
+          format: uuid
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+    
+    Segment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "early-access"
+        description:
+          type: string
+          example: "Users with early access to new rewards"
+        criteria:
+          type: object
+          additionalProperties: true
+        active:
+          type: boolean
+          default: true
+        created_at:
+          type: string
+          format: date-time
+    
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+
+paths:
+  /rules:
+    get:
+      summary: List all rules
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Rule'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - insufficient permissions
+    
+    post:
+      summary: Create a new rule
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - config
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                config:
+                  type: object
+                  additionalProperties: true
+                active:
+                  type: boolean
+                  default: true
+      responses:
+        '201':
+          description: Rule created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rule'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - insufficient permissions
+  
+  /rules/{ruleId}:
+    parameters:
+      - name: ruleId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    
+    get:
+      summary: Get a specific rule
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Rule details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rule'
+        '404':
+          description: Rule not found
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+    
+    put:
+      summary: Update a rule
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                config:
+                  type: object
+                  additionalProperties: true
+                active:
+                  type: boolean
+      responses:
+        '200':
+          description: Rule updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rule'
+        '404':
+          description: Rule not found
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+    
+    delete:
+      summary: Delete a rule
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Rule deleted
+        '404':
+          description: Rule not found
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+
+  /rewards:
+    get:
+      summary: List all rewards
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: active
+          in: query
+          schema:
+            type: boolean
+        - name: segment
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of rewards
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Reward'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+    
+    post:
+      summary: Create a new reward
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - cost
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                cost:
+                  type: integer
+                  minimum: 1
+                segment:
+                  type: object
+                  additionalProperties: true
+                active:
+                  type: boolean
+                  default: true
+      responses:
+        '201':
+          description: Reward created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reward'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+
+  /rewards/{rewardId}:
+    parameters:
+      - name: rewardId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    
+    get:
+      summary: Get a specific reward
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Reward details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reward'
+        '404':
+          description: Reward not found
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+    
+    put:
+      summary: Update a reward
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                cost:
+                  type: integer
+                  minimum: 1
+                segment:
+                  type: object
+                  additionalProperties: true
+                active:
+                  type: boolean
+      responses:
+        '200':
+          description: Reward updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reward'
+        '404':
+          description: Reward not found
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+
+  /segments:
+    get:
+      summary: List all segments
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of segments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Segment'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+    
+    post:
+      summary: Create a new segment
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - criteria
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                criteria:
+                  type: object
+                  additionalProperties: true
+                active:
+                  type: boolean
+                  default: true
+      responses:
+        '201':
+          description: Segment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Segment'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+
+  /segments/{segmentId}:
+    parameters:
+      - name: segmentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    
+    get:
+      summary: Get a specific segment
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Segment details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Segment'
+        '404':
+          description: Segment not found
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+    
+    put:
+      summary: Update a segment
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                criteria:
+                  type: object
+                  additionalProperties: true
+                active:
+                  type: boolean
+      responses:
+        '200':
+          description: Segment updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Segment'
+        '404':
+          description: Segment not found
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+                  timestamp:
+                    type: string
+                    format: date-time 

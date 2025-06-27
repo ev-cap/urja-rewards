@@ -8,6 +8,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -77,25 +78,28 @@ func (q *Queries) CreateRedemption(ctx context.Context, arg CreateRedemptionPara
 }
 
 const createReward = `-- name: CreateReward :one
-INSERT INTO rewards_catalog (name, description, cost, segment, created_by)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, name, description, cost, segment, active, created_by, created_at
+INSERT INTO rewards_catalog (id, name, description, cost, segment, active, created_by) 
+VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, name, description, cost, segment, active, created_by, created_at
 `
 
 type CreateRewardParams struct {
+	ID          uuid.UUID             `json:"id"`
 	Name        string                `json:"name"`
 	Description sql.NullString        `json:"description"`
 	Cost        int32                 `json:"cost"`
 	Segment     pqtype.NullRawMessage `json:"segment"`
+	Active      bool                  `json:"active"`
 	CreatedBy   uuid.NullUUID         `json:"created_by"`
 }
 
 func (q *Queries) CreateReward(ctx context.Context, arg CreateRewardParams) (RewardsCatalog, error) {
 	row := q.db.QueryRowContext(ctx, createReward,
+		arg.ID,
 		arg.Name,
 		arg.Description,
 		arg.Cost,
 		arg.Segment,
+		arg.Active,
 		arg.CreatedBy,
 	)
 	var i RewardsCatalog
@@ -105,6 +109,81 @@ func (q *Queries) CreateReward(ctx context.Context, arg CreateRewardParams) (Rew
 		&i.Description,
 		&i.Cost,
 		&i.Segment,
+		&i.Active,
+		&i.CreatedBy,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const createRule = `-- name: CreateRule :one
+INSERT INTO rules (id, name, description, config, active, created_by) 
+VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, name, description, config, active, created_by, created_at, updated_at
+`
+
+type CreateRuleParams struct {
+	ID          uuid.UUID       `json:"id"`
+	Name        string          `json:"name"`
+	Description sql.NullString  `json:"description"`
+	Config      json.RawMessage `json:"config"`
+	Active      bool            `json:"active"`
+	CreatedBy   uuid.NullUUID   `json:"created_by"`
+}
+
+// Rules queries
+func (q *Queries) CreateRule(ctx context.Context, arg CreateRuleParams) (Rule, error) {
+	row := q.db.QueryRowContext(ctx, createRule,
+		arg.ID,
+		arg.Name,
+		arg.Description,
+		arg.Config,
+		arg.Active,
+		arg.CreatedBy,
+	)
+	var i Rule
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.Config,
+		&i.Active,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const createSegment = `-- name: CreateSegment :one
+INSERT INTO segments (id, name, description, criteria, active, created_by) 
+VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, name, description, criteria, active, created_by, created_at
+`
+
+type CreateSegmentParams struct {
+	ID          uuid.UUID       `json:"id"`
+	Name        string          `json:"name"`
+	Description sql.NullString  `json:"description"`
+	Criteria    json.RawMessage `json:"criteria"`
+	Active      bool            `json:"active"`
+	CreatedBy   uuid.NullUUID   `json:"created_by"`
+}
+
+// Segments queries
+func (q *Queries) CreateSegment(ctx context.Context, arg CreateSegmentParams) (Segment, error) {
+	row := q.db.QueryRowContext(ctx, createSegment,
+		arg.ID,
+		arg.Name,
+		arg.Description,
+		arg.Criteria,
+		arg.Active,
+		arg.CreatedBy,
+	)
+	var i Segment
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.Criteria,
 		&i.Active,
 		&i.CreatedBy,
 		&i.CreatedAt,
@@ -123,6 +202,15 @@ func (q *Queries) CreateUser(ctx context.Context, phone string) (User, error) {
 	var i User
 	err := row.Scan(&i.ID, &i.Phone, &i.CreatedAt)
 	return i, err
+}
+
+const deleteRule = `-- name: DeleteRule :exec
+DELETE FROM rules WHERE id = $1
+`
+
+func (q *Queries) DeleteRule(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deleteRule, id)
+	return err
 }
 
 const getPendingRedemptionsOlderThan = `-- name: GetPendingRedemptionsOlderThan :many
@@ -315,6 +403,45 @@ func (q *Queries) GetRewardsCatalog(ctx context.Context) ([]RewardsCatalog, erro
 	return items, nil
 }
 
+const getRule = `-- name: GetRule :one
+SELECT id, name, description, config, active, created_by, created_at, updated_at FROM rules WHERE id = $1
+`
+
+func (q *Queries) GetRule(ctx context.Context, id uuid.UUID) (Rule, error) {
+	row := q.db.QueryRowContext(ctx, getRule, id)
+	var i Rule
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.Config,
+		&i.Active,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getSegment = `-- name: GetSegment :one
+SELECT id, name, description, criteria, active, created_by, created_at FROM segments WHERE id = $1
+`
+
+func (q *Queries) GetSegment(ctx context.Context, id uuid.UUID) (Segment, error) {
+	row := q.db.QueryRowContext(ctx, getSegment, id)
+	var i Segment
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.Criteria,
+		&i.Active,
+		&i.CreatedBy,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getUser = `-- name: GetUser :one
 SELECT id, phone, created_at FROM users
 WHERE id = $1 LIMIT 1
@@ -352,6 +479,114 @@ func (q *Queries) GetUserPointsBalance(ctx context.Context, userID uuid.UUID) (i
 	return balance, err
 }
 
+const listRewards = `-- name: ListRewards :many
+SELECT id, name, description, cost, segment, active, created_by, created_at FROM rewards_catalog WHERE active = $1 ORDER BY created_at DESC
+`
+
+// Enhanced rewards queries
+func (q *Queries) ListRewards(ctx context.Context, active bool) ([]RewardsCatalog, error) {
+	rows, err := q.db.QueryContext(ctx, listRewards, active)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []RewardsCatalog{}
+	for rows.Next() {
+		var i RewardsCatalog
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.Cost,
+			&i.Segment,
+			&i.Active,
+			&i.CreatedBy,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRules = `-- name: ListRules :many
+SELECT id, name, description, config, active, created_by, created_at, updated_at FROM rules ORDER BY created_at DESC
+`
+
+func (q *Queries) ListRules(ctx context.Context) ([]Rule, error) {
+	rows, err := q.db.QueryContext(ctx, listRules)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Rule{}
+	for rows.Next() {
+		var i Rule
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.Config,
+			&i.Active,
+			&i.CreatedBy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSegments = `-- name: ListSegments :many
+SELECT id, name, description, criteria, active, created_by, created_at FROM segments ORDER BY created_at DESC
+`
+
+func (q *Queries) ListSegments(ctx context.Context) ([]Segment, error) {
+	rows, err := q.db.QueryContext(ctx, listSegments)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Segment{}
+	for rows.Next() {
+		var i Segment
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.Criteria,
+			&i.Active,
+			&i.CreatedBy,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateRedemptionStatus = `-- name: UpdateRedemptionStatus :one
 UPDATE redemptions
 SET status = $2
@@ -375,6 +610,112 @@ func (q *Queries) UpdateRedemptionStatus(ctx context.Context, arg UpdateRedempti
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateReward = `-- name: UpdateReward :one
+UPDATE rewards_catalog SET name = $2, description = $3, cost = $4, segment = $5, active = $6 
+WHERE id = $1 RETURNING id, name, description, cost, segment, active, created_by, created_at
+`
+
+type UpdateRewardParams struct {
+	ID          uuid.UUID             `json:"id"`
+	Name        string                `json:"name"`
+	Description sql.NullString        `json:"description"`
+	Cost        int32                 `json:"cost"`
+	Segment     pqtype.NullRawMessage `json:"segment"`
+	Active      bool                  `json:"active"`
+}
+
+func (q *Queries) UpdateReward(ctx context.Context, arg UpdateRewardParams) (RewardsCatalog, error) {
+	row := q.db.QueryRowContext(ctx, updateReward,
+		arg.ID,
+		arg.Name,
+		arg.Description,
+		arg.Cost,
+		arg.Segment,
+		arg.Active,
+	)
+	var i RewardsCatalog
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.Cost,
+		&i.Segment,
+		&i.Active,
+		&i.CreatedBy,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const updateRule = `-- name: UpdateRule :one
+UPDATE rules SET name = $2, description = $3, config = $4, active = $5, updated_at = NOW() 
+WHERE id = $1 RETURNING id, name, description, config, active, created_by, created_at, updated_at
+`
+
+type UpdateRuleParams struct {
+	ID          uuid.UUID       `json:"id"`
+	Name        string          `json:"name"`
+	Description sql.NullString  `json:"description"`
+	Config      json.RawMessage `json:"config"`
+	Active      bool            `json:"active"`
+}
+
+func (q *Queries) UpdateRule(ctx context.Context, arg UpdateRuleParams) (Rule, error) {
+	row := q.db.QueryRowContext(ctx, updateRule,
+		arg.ID,
+		arg.Name,
+		arg.Description,
+		arg.Config,
+		arg.Active,
+	)
+	var i Rule
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.Config,
+		&i.Active,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateSegment = `-- name: UpdateSegment :one
+UPDATE segments SET name = $2, description = $3, criteria = $4, active = $5 
+WHERE id = $1 RETURNING id, name, description, criteria, active, created_by, created_at
+`
+
+type UpdateSegmentParams struct {
+	ID          uuid.UUID       `json:"id"`
+	Name        string          `json:"name"`
+	Description sql.NullString  `json:"description"`
+	Criteria    json.RawMessage `json:"criteria"`
+	Active      bool            `json:"active"`
+}
+
+func (q *Queries) UpdateSegment(ctx context.Context, arg UpdateSegmentParams) (Segment, error) {
+	row := q.db.QueryRowContext(ctx, updateSegment,
+		arg.ID,
+		arg.Name,
+		arg.Description,
+		arg.Criteria,
+		arg.Active,
+	)
+	var i Segment
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.Criteria,
+		&i.Active,
+		&i.CreatedBy,
+		&i.CreatedAt,
 	)
 	return i, err
 }

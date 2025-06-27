@@ -35,11 +35,6 @@ ORDER BY cost ASC;
 SELECT * FROM rewards_catalog
 WHERE id = $1 LIMIT 1;
 
--- name: CreateReward :one
-INSERT INTO rewards_catalog (name, description, cost, segment, created_by)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING *;
-
 -- name: GetRedemptionsByUser :many
 SELECT * FROM redemptions
 WHERE user_id = $1
@@ -63,4 +58,49 @@ RETURNING *;
 -- name: GetPendingRedemptionsOlderThan :many
 SELECT * FROM redemptions
 WHERE status = 'PENDING' AND created_at < $1
-ORDER BY created_at ASC; 
+ORDER BY created_at ASC;
+
+-- Rules queries
+-- name: CreateRule :one
+INSERT INTO rules (id, name, description, config, active, created_by) 
+VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;
+
+-- name: GetRule :one
+SELECT * FROM rules WHERE id = $1;
+
+-- name: ListRules :many
+SELECT * FROM rules ORDER BY created_at DESC;
+
+-- name: UpdateRule :one
+UPDATE rules SET name = $2, description = $3, config = $4, active = $5, updated_at = NOW() 
+WHERE id = $1 RETURNING *;
+
+-- name: DeleteRule :exec
+DELETE FROM rules WHERE id = $1;
+
+-- Segments queries
+-- name: CreateSegment :one
+INSERT INTO segments (id, name, description, criteria, active, created_by) 
+VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;
+
+-- name: GetSegment :one
+SELECT * FROM segments WHERE id = $1;
+
+-- name: ListSegments :many
+SELECT * FROM segments ORDER BY created_at DESC;
+
+-- name: UpdateSegment :one
+UPDATE segments SET name = $2, description = $3, criteria = $4, active = $5 
+WHERE id = $1 RETURNING *;
+
+-- Enhanced rewards queries
+-- name: ListRewards :many
+SELECT * FROM rewards_catalog WHERE active = $1 ORDER BY created_at DESC;
+
+-- name: CreateReward :one
+INSERT INTO rewards_catalog (id, name, description, cost, segment, active, created_by) 
+VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *;
+
+-- name: UpdateReward :one
+UPDATE rewards_catalog SET name = $2, description = $3, cost = $4, segment = $5, active = $6 
+WHERE id = $1 RETURNING *; 

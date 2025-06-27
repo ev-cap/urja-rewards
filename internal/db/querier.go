@@ -15,17 +15,31 @@ type Querier interface {
 	CreatePointsEvent(ctx context.Context, arg CreatePointsEventParams) (PointsEvent, error)
 	CreateRedemption(ctx context.Context, arg CreateRedemptionParams) (Redemption, error)
 	CreateReward(ctx context.Context, arg CreateRewardParams) (RewardsCatalog, error)
+	// Rules queries
+	CreateRule(ctx context.Context, arg CreateRuleParams) (Rule, error)
+	// Segments queries
+	CreateSegment(ctx context.Context, arg CreateSegmentParams) (Segment, error)
 	CreateUser(ctx context.Context, phone string) (User, error)
+	DeleteRule(ctx context.Context, id uuid.UUID) error
 	GetPendingRedemptionsOlderThan(ctx context.Context, createdAt time.Time) ([]Redemption, error)
 	GetPointsEventsByUser(ctx context.Context, userID uuid.UUID) ([]PointsEvent, error)
 	GetRedemption(ctx context.Context, id uuid.UUID) (Redemption, error)
 	GetRedemptionsByUser(ctx context.Context, userID uuid.UUID) ([]Redemption, error)
 	GetReward(ctx context.Context, id uuid.UUID) (RewardsCatalog, error)
 	GetRewardsCatalog(ctx context.Context) ([]RewardsCatalog, error)
+	GetRule(ctx context.Context, id uuid.UUID) (Rule, error)
+	GetSegment(ctx context.Context, id uuid.UUID) (Segment, error)
 	GetUser(ctx context.Context, id uuid.UUID) (User, error)
 	GetUserByPhone(ctx context.Context, phone string) (User, error)
 	GetUserPointsBalance(ctx context.Context, userID uuid.UUID) (int64, error)
+	// Enhanced rewards queries
+	ListRewards(ctx context.Context, active bool) ([]RewardsCatalog, error)
+	ListRules(ctx context.Context) ([]Rule, error)
+	ListSegments(ctx context.Context) ([]Segment, error)
 	UpdateRedemptionStatus(ctx context.Context, arg UpdateRedemptionStatusParams) (Redemption, error)
+	UpdateReward(ctx context.Context, arg UpdateRewardParams) (RewardsCatalog, error)
+	UpdateRule(ctx context.Context, arg UpdateRuleParams) (Rule, error)
+	UpdateSegment(ctx context.Context, arg UpdateSegmentParams) (Segment, error)
 }
 
 var _ Querier = (*Queries)(nil)
