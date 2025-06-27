@@ -2,9 +2,12 @@
 package admin
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"encore.app/internal/db"
@@ -15,6 +18,7 @@ import (
 	"github.com/sqlc-dev/pqtype"
 	ffclient "github.com/thomaspoignant/go-feature-flag"
 	"github.com/thomaspoignant/go-feature-flag/ffcontext"
+	"gopkg.in/yaml.v3"
 )
 
 // Service configuration
@@ -592,6 +596,43 @@ func (s *AdminService) PutSegmentsSegmentId(ctx echo.Context, segmentId openapi_
 		CreatedAt: &segment.CreatedAt,
 	}
 	return ctx.JSON(http.StatusOK, response)
+}
+
+// SwaggerUIResponse represents the response for Swagger UI
+type SwaggerUIResponse struct {
+	HTML string `json:"html"`
+}
+
+// OpenAPISpecResponse represents the response for OpenAPI specification
+type OpenAPISpecResponse struct {
+	Spec string `json:"spec"`
+}
+
+//encore:api public path=/v1/docs method=GET
+func SwaggerUIHandler(ctx context.Context) (string, error) {
+	// Read the static HTML file
+	data, err := os.ReadFile("services/admin/swagger.html")
+	if err != nil {
+		return "", fmt.Errorf("could not read Swagger UI HTML: %w", err)
+	}
+
+	return string(data), nil
+}
+
+//encore:api public path=/v1/docs/openapi.json method=GET
+func OpenAPISpecHandler(ctx context.Context) (map[string]interface{}, error) {
+	// Read the admin.yaml file and convert it to JSON
+	data, err := os.ReadFile("services/admin/admin.yaml")
+	if err != nil {
+		return nil, fmt.Errorf("could not read OpenAPI spec: %w", err)
+	}
+
+	var spec map[string]interface{}
+	if err := yaml.Unmarshal(data, &spec); err != nil {
+		return nil, fmt.Errorf("could not parse OpenAPI YAML: %w", err)
+	}
+
+	return spec, nil
 }
 
 // initService initializes the admin service

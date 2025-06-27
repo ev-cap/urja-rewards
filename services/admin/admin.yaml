@@ -106,6 +106,30 @@ components:
           additionalProperties: true
 
 paths:
+  /docs:
+    get:
+      summary: Swagger UI Documentation
+      description: Interactive API documentation interface
+      responses:
+        '200':
+          description: Swagger UI HTML page
+          content:
+            text/html:
+              schema:
+                type: string
+
+  /docs/openapi.json:
+    get:
+      summary: OpenAPI Specification
+      description: JSON format of the OpenAPI specification
+      responses:
+        '200':
+          description: OpenAPI specification in JSON format
+          content:
+            application/json:
+              schema:
+                type: object
+
   /rules:
     get:
       summary: List all rules
